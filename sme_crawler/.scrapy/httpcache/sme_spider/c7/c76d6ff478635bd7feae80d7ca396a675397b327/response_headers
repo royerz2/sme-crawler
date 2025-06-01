@@ -1,0 +1,11 @@
+X-Powered-By: PHP/8.2.28
+Content-Type: text/html; charset=UTF-8
+Link: <https://www.mkblimburg.nl/wp-json/>; rel="https://api.w.org/"
+Link: <https://www.mkblimburg.nl/wp-json/wp/v2/posts/3225>; rel="alternate"; title="JSON"; type="application/json"
+Link: <https://www.mkblimburg.nl/?p=3225>; rel=shortlink
+Etag: "22090-1748662786;gz"
+X-Litespeed-Cache: hit
+Content-Encoding: gzip
+Vary: Accept-Encoding
+Date: Sun, 01 Jun 2025 22:03:02 GMT
+Server: LiteSpeed

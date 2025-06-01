@@ -1,0 +1,11 @@
+Server: nginx
+Content-Type: text/html; charset=UTF-8
+Vary: Accept-Encoding
+Cache-Control: no-cache, private
+Date: Sun, 01 Jun 2025 21:46:45 GMT
+Set-Cookie: XSRF-TOKEN=eyJpdiI6InNRcllTdVovMmRNb1VpaERCVFlQVkE9PSIsInZhbHVlIjoiK1BhVnd5UEVacDFqWk5xMEJDdm02akNhditaUUhVak11QkVRRDlUWWtyeTRLcGNJVzVFY044QVROSjJITWRLZlRJZVk3Z0Y1UkYydWJsVDF4Z3FFczdGazJ5NjdMa0hCN3FaaWVCRVFPUThFdmV5ZG1GL3AzNjl0WUoyTUxHckIiLCJtYWMiOiIwZmNhZDc1NzBjMTU0OTRlNWJmZTEzMmJhNDQ1MDNhY2QwYzYwNWZjMzQ3ZDQ5M2Q1N2ViYjcyOTYzZWRlMTExIiwidGFnIjoiIn0%3D; expires=Sun, 01 Jun 2025 23:46:45 GMT; Max-Age=7200; path=/; secure; samesite=lax
+Set-Cookie: mkb_limburg_word_lid_session=eyJpdiI6ImYxcFNFa25pVmRQM21Ob2gzSkptTEE9PSIsInZhbHVlIjoiZDc0cHpzT3BTSjllMjlMQjJHWml1Mi9BdEx2aEtJSGx5bUtOQzRFQ0hyczVRaXdJNXJpODc1UzF6RnI5Qm5hVlZuVjF3MXM0SzZQRlNZcDQ4MjdBMkdIdHphVDlIc2FVSDBtVGd1OHFUcHhhSTUvQ2ltTlhNbUhpT3JtNWlVK0wiLCJtYWMiOiI5YmUwNTBjZmJiNzg5NTRiMjAxZTllMGNmMzM0ZjY1NTg1MzkzN2ZiNmUxN2NhMzAxYTY4MWViMzE0M2U1OGYzIiwidGFnIjoiIn0%3D; expires=Sun, 01 Jun 2025 23:46:45 GMT; Max-Age=7200; path=/; httponly; samesite=lax
+X-Frame-Options: SAMEORIGIN
+X-Xss-Protection: 1; mode=block
+X-Content-Type-Options: nosniff
+Content-Encoding: gzip
