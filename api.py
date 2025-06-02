@@ -274,16 +274,38 @@ def get_articles():
     per_page = request.args.get('per_page', 20, type=int)
     domain = request.args.get('domain')
     is_sme_related = request.args.get('is_sme_related')
-    
+    start_date_str = request.args.get('start_date')
+    end_date_str = request.args.get('end_date')
+
     query = {}
     if domain:
         query['domain'] = domain
     if is_sme_related is not None:
         query['is_sme_related'] = is_sme_related.lower() == 'true'
-    
+
+    # Add date range filtering
+    if start_date_str or end_date_str:
+        date_query = {}
+        if start_date_str:
+            try:
+                start_date = datetime.fromisoformat(start_date_str)
+                date_query['$gte'] = start_date
+            except ValueError:
+                return jsonify({"error": "Invalid start_date format. Use YYYY-MM-DD"}), 400
+        if end_date_str:
+            try:
+                # Include the entire end day
+                end_date = datetime.fromisoformat(end_date_str)
+                date_query['$lte'] = end_date.replace(hour=23, minute=59, second=59, microsecond=999999)
+            except ValueError:
+                return jsonify({"error": "Invalid end_date format. Use YYYY-MM-DD"}), 400
+
+        if date_query:
+            query['publish_date_parsed'] = date_query
+
     # Get total count
     total = collection.count_documents(query)
-    
+
     # Get paginated results
     articles = list(collection.find(query)
                    .skip((page - 1) * per_page)
@@ -361,11 +383,49 @@ def get_article_analysis(article_id):
 @app.route('/sentiment')
 def get_sentiment_analysis():
     """Get sentiment analysis for all articles"""
-    df = analyzer.load_data()
     
-    if df.empty:
-        return jsonify({"error": "No data found"}), 404
+    start_date_str = request.args.get('start_date')
+    end_date_str = request.args.get('end_date')
+
+    query = {}
+
+    # Add date range filtering to the query
+    if start_date_str or end_date_str:
+        date_query = {}
+        if start_date_str:
+            try:
+                start_date = datetime.fromisoformat(start_date_str)
+                date_query['$gte'] = start_date
+            except ValueError:
+                return jsonify({"error": "Invalid start_date format. Use YYYY-MM-DD"}), 400
+        if end_date_str:
+            try:
+                end_date = datetime.fromisoformat(end_date_str)
+                # Include the entire end day
+                date_query['$lte'] = end_date.replace(hour=23, minute=59, second=59, microsecond=999999)
+            except ValueError:
+                return jsonify({"error": "Invalid end_date format. Use YYYY-MM-DD"}), 400
+
+        if date_query:
+            query['publish_date_parsed'] = date_query
+
+    # Load data with the applied query
+    cursor = collection.find(query)
+    articles = list(cursor)
     
+    if not articles:
+        return jsonify({"error": "No data found for the specified date range"}), 404
+            
+    # Convert to DataFrame
+    df = pd.DataFrame(articles)
+    
+    # Ensure publish_date_parsed is datetime objects
+    df['publish_date_parsed'] = pd.to_datetime(df['publish_date_parsed'], errors='coerce')
+
+    # Ensure word_count is numeric if it's in the new format
+    if 'word_count' in df.columns:
+        df['word_count'] = df['word_count'].apply(lambda x: int(x.get('$numberInt', 0)) if isinstance(x, dict) else x)
+
     sentiments = []
     for _, row in df.iterrows():
         combined_text = str(row.get('title', '')) + ' ' + str(row.get('content', ''))
@@ -404,9 +464,46 @@ def get_clusters():
     """Get article clustering results"""
     n_clusters = request.args.get('n_clusters', 8, type=int)
     
-    df = analyzer.load_data()
+    start_date_str = request.args.get('start_date')
+    end_date_str = request.args.get('end_date')
+
+    query = {}
+
+    # Add date range filtering to the query
+    if start_date_str or end_date_str:
+        date_query = {}
+        if start_date_str:
+            try:
+                start_date = datetime.fromisoformat(start_date_str)
+                date_query['$gte'] = start_date
+            except ValueError:
+                return jsonify({"error": "Invalid start_date format. Use YYYY-MM-DD"}), 400
+        if end_date_str:
+            try:
+                end_date = datetime.fromisoformat(end_date_str)
+                # Include the entire end day
+                date_query['$lte'] = end_date.replace(hour=23, minute=59, second=59, microsecond=999999)
+            except ValueError:
+                return jsonify({"error": "Invalid end_date format. Use YYYY-MM-DD"}), 400
+
+        if date_query:
+            query['publish_date_parsed'] = date_query
+
+    # Load data with the applied query
+    cursor = collection.find(query)
+    articles = list(cursor)
+    
+    if not articles:
+        return jsonify({"error": "No data found for the specified date range"}), 404
+            
+    # Convert to DataFrame and proceed with clustering
+    df = pd.DataFrame(articles)
+    
+    # Ensure publish_date_parsed is datetime objects for any potential future use in clustering logic
+    df['publish_date_parsed'] = pd.to_datetime(df['publish_date_parsed'], errors='coerce')
+
     if df.empty:
-        return jsonify({"error": "No data found"}), 404
+        return jsonify({"error": "No data found for clustering in the specified date range"}), 404
     
     clusters = analyzer.cluster_articles(n_clusters)
     
@@ -418,11 +515,49 @@ def get_clusters():
 @app.route('/problems')
 def get_problems():
     """Get SME problems identification across all articles"""
-    df = analyzer.load_data()
     
-    if df.empty:
-        return jsonify({"error": "No data found"}), 404
+    start_date_str = request.args.get('start_date')
+    end_date_str = request.args.get('end_date')
+
+    query = {}
+
+    # Add date range filtering to the query
+    if start_date_str or end_date_str:
+        date_query = {}
+        if start_date_str:
+            try:
+                start_date = datetime.fromisoformat(start_date_str)
+                date_query['$gte'] = start_date
+            except ValueError:
+                return jsonify({"error": "Invalid start_date format. Use YYYY-MM-DD"}), 400
+        if end_date_str:
+            try:
+                end_date = datetime.fromisoformat(end_date_str)
+                # Include the entire end day
+                date_query['$lte'] = end_date.replace(hour=23, minute=59, second=59, microsecond=999999)
+            except ValueError:
+                return jsonify({"error": "Invalid end_date format. Use YYYY-MM-DD"}), 400
+
+        if date_query:
+            query['publish_date_parsed'] = date_query
+
+    # Load data with the applied query
+    cursor = collection.find(query)
+    articles = list(cursor)
     
+    if not articles:
+        return jsonify({"error": "No data found for the specified date range"}), 404
+            
+    # Convert to DataFrame
+    df = pd.DataFrame(articles)
+    
+    # Ensure publish_date_parsed is datetime objects
+    df['publish_date_parsed'] = pd.to_datetime(df['publish_date_parsed'], errors='coerce')
+
+    # Ensure word_count is numeric if it's in the new format
+    if 'word_count' in df.columns:
+        df['word_count'] = df['word_count'].apply(lambda x: int(x.get('$numberInt', 0)) if isinstance(x, dict) else x)
+
     problem_articles = defaultdict(list)
     problem_counts = Counter()
     sme_problem_counts = Counter()
@@ -465,10 +600,44 @@ def get_problems():
 @app.route('/network')
 def get_network_analysis():
     """Generate network analysis of problems and articles"""
-    df = analyzer.load_data()
+    
+    start_date_str = request.args.get('start_date')
+    end_date_str = request.args.get('end_date')
+
+    query = {}
+
+    # Add date range filtering to the query
+    if start_date_str or end_date_str:
+        date_query = {}
+        if start_date_str:
+            try:
+                start_date = datetime.fromisoformat(start_date_str)
+                date_query['$gte'] = start_date
+            except ValueError:
+                return jsonify({"error": "Invalid start_date format. Use YYYY-MM-DD"}), 400
+        if end_date_str:
+            try:
+                end_date = datetime.fromisoformat(end_date_str)
+                # Include the entire end day
+                date_query['$lte'] = end_date.replace(hour=23, minute=59, second=59, microsecond=999999)
+            except ValueError:
+                return jsonify({"error": "Invalid end_date format. Use YYYY-MM-DD"}), 400
+
+        if date_query:
+            query['publish_date_parsed'] = date_query
+
+    # Load data with the applied query
+    cursor = collection.find(query)
+    articles = list(cursor)
+    
+    if not articles:
+        return jsonify({"error": "No data found for the specified date range"}), 404
+            
+    # Convert to DataFrame
+    df = pd.DataFrame(articles)
     
     if df.empty:
-        return jsonify({"error": "No data found"}), 404
+        return jsonify({"error": "No data found for network analysis in the specified date range"}), 404
     
     # Create network graph
     G = nx.Graph()
@@ -554,161 +723,198 @@ def get_network_analysis():
 @app.route('/network_analysis')
 def get_advanced_network_analysis():
     """Generate advanced mathematical network analysis metrics"""
-    df = analyzer.load_data()
+    
+    start_date_str = request.args.get('start_date')
+    end_date_str = request.args.get('end_date')
+
+    query = {}
+
+    # Add date range filtering to the query
+    if start_date_str or end_date_str:
+        date_query = {}
+        if start_date_str:
+            try:
+                start_date = datetime.fromisoformat(start_date_str)
+                date_query['$gte'] = start_date
+            except ValueError:
+                return jsonify({"error": "Invalid start_date format. Use YYYY-MM-DD"}), 400
+        if end_date_str:
+            try:
+                end_date = datetime.fromisoformat(end_date_str)
+                # Include the entire end day
+                date_query['$lte'] = end_date.replace(hour=23, minute=59, second=59, microsecond=999999)
+            except ValueError:
+                return jsonify({"error": "Invalid end_date format. Use YYYY-MM-DD"}), 400
+
+        if date_query:
+            query['publish_date_parsed'] = date_query
+
+    # Load data with the applied query
+    cursor = collection.find(query)
+    articles = list(cursor)
+    
+    if not articles:
+        return jsonify({"error": "No data found for the specified date range"}), 404
+            
+    # Convert to DataFrame
+    df = pd.DataFrame(articles)
     
     if df.empty:
-        return jsonify({"error": "No data found"}), 404
-    
-    # Create network graph (same logic as /network)
-    G = nx.Graph()
-    
-    problem_articles = defaultdict(list)
-    
-    for _, row in df.iterrows():
-        article_id = str(row['_id'])
-        combined_text = str(row.get('title', '')) + ' ' + str(row.get('content', ''))
-        problems = analyzer.identify_sme_problems(combined_text)
-        is_sme_related = row.get('is_sme_related', False)
-        
-        if problems:
-            # Add article node
-            G.add_node(f"article_{article_id}", 
-                      type='article', 
-                      title=row.get('title', ''),
-                      domain=row.get('domain', ''),
-                      is_sme_related=is_sme_related)
-            
-            for problem in problems:
-                # Add problem node
-                G.add_node(f"problem_{problem}", type='problem', name=problem)
-                
-                # Add edge between article and problem
-                G.add_edge(f"article_{article_id}", f"problem_{problem}",
-                          connection_type='identifies_problem')
-                
-                problem_articles[problem].append(article_id)
-    
-    # Add edges between articles that share problems
-    for problem, articles in problem_articles.items():
-        if len(articles) > 1:
-            for i, article1 in enumerate(articles):
-                for article2 in articles[i+1:]:
-                    if not G.has_edge(f"article_{article1}", f"article_{article2}"):
-                        G.add_edge(f"article_{article1}", f"article_{article2}",
-                                  connection_type='shared_problem',
-                                  shared_problems=[problem])
-                    else:
-                        # Add to existing shared problems
-                        edge_data = G.get_edge_data(f"article_{article1}", f"article_{article2}")
-                        if 'shared_problems' in edge_data:
-                            edge_data['shared_problems'].append(problem)
-                            
-    # Perform advanced network analysis
-    if G.number_of_nodes() == 0:
-         return jsonify({"error": "Network has no nodes for analysis"}), 404
+         return jsonify({"error": "No data found for network analysis in the specified date range"}), 404
          
     try:
-        avg_clustering = nx.average_clustering(G)
-    except nx.NetworkXPointlessConcept:
-        avg_clustering = 0.0
+        # Create network graph (same logic as /network)
+        G = nx.Graph()
         
-    try:
-         degree_assortativity = nx.degree_assortativity_coefficient(G)
-    except nx.NetworkXPointlessConcept:
-         degree_assortativity = None # Or 0.0, depending on desired representation for no edges
+        problem_articles = defaultdict(list)
+        
+        for _, row in df.iterrows():
+            article_id = str(row['_id'])
+            combined_text = str(row.get('title', '')) + ' ' + str(row.get('content', ''))
+            problems = analyzer.identify_sme_problems(combined_text)
+            is_sme_related = row.get('is_sme_related', False)
+            
+            if problems:
+                # Add article node
+                G.add_node(f"article_{article_id}", 
+                          type='article', 
+                          title=row.get('title', ''),
+                          domain=row.get('domain', ''),
+                          is_sme_related=is_sme_related)
+                
+                for problem in problems:
+                    # Add problem node
+                    G.add_node(f"problem_{problem}", type='problem', name=problem)
+                    
+                    # Add edge between article and problem
+                    G.add_edge(f"article_{article_id}", f"problem_{problem}",
+                              connection_type='identifies_problem')
+                    
+                    problem_articles[problem].append(article_id)
+        
+        # Add edges between articles that share problems
+        for problem, articles in problem_articles.items():
+            if len(articles) > 1:
+                for i, article1 in enumerate(articles):
+                    for article2 in articles[i+1:]:
+                        if not G.has_edge(f"article_{article1}", f"article_{article2}"):
+                            G.add_edge(f"article_{article1}", f"article_{article2}",
+                                      connection_type='shared_problem',
+                                      shared_problems=[problem])
+                        else:
+                            # Add to existing shared problems
+                            edge_data = G.get_edge_data(f"article_{article1}", f"article_{article2}")
+                            if 'shared_problems' in edge_data:
+                                edge_data['shared_problems'].append(problem)
+                            
+        # Perform advanced network analysis
+        if G.number_of_nodes() == 0:
+             return jsonify({"error": "Network has no nodes for analysis"}), 404
+             
+        try:
+            avg_clustering = nx.average_clustering(G)
+        except nx.NetworkXPointlessConcept:
+            avg_clustering = 0.0
+            
+        try:
+             degree_assortativity = nx.degree_assortativity_coefficient(G)
+        except nx.NetworkXPointlessConcept:
+             degree_assortativity = None # Or 0.0, depending on desired representation for no edges
 
-    # Community Detection (using Girvan-Newman or similar, needs sorted edges or a faster algorithm)
-    # For simplicity and performance on potentially larger graphs, using a greedy modularity maximization
-    try:
-        communities_generator = nx.community.greedy_modularity_communities(G)
-        # Convert to list of lists of node IDs (strings)
-        communities = [list(c) for c in communities_generator]
-    except Exception as e:
-        communities = f"Error calculating communities: {e}"
+        # Community Detection (using Girvan-Newman or similar, needs sorted edges or a faster algorithm)
+        # For simplicity and performance on potentially larger graphs, using a greedy modularity maximization
+        try:
+            communities_generator = nx.community.greedy_modularity_communities(G)
+            # Convert to list of lists of node IDs (strings)
+            communities = [list(c) for c in communities_generator]
+        except Exception as e:
+            communities = f"Error calculating communities: {e}"
 
-    # PageRank
-    try:
-        pagerank_scores = nx.pagerank(G)
-        # Convert to list of tuples (node, score) for easier handling, sort by score
-        sorted_pagerank = sorted(pagerank_scores.items(), key=lambda item: item[1], reverse=True)
-    except Exception as e:
-        pagerank_scores = f"Error calculating pagerank: {e}"
-        sorted_pagerank = []
+        # PageRank
+        try:
+            pagerank_scores = nx.pagerank(G)
+            # Convert to list of tuples (node, score) for easier handling, sort by score
+            sorted_pagerank = sorted(pagerank_scores.items(), key=lambda item: item[1], reverse=True)
+        except Exception as e:
+            pagerank_scores = f"Error calculating pagerank: {e}"
+            sorted_pagerank = []
 
-    # Structural Holes (Constraint and Effective Size)
-    try:
-        # Constraint measures the extent to which a node's contacts are connected to each other
-        constraint_scores = nx.constraint(G)
-        sorted_constraint = sorted(constraint_scores.items(), key=lambda item: item[1]) # Lower constraint is better for brokerage
-    except Exception as e:
-        constraint_scores = f"Error calculating constraint: {e}"
-        sorted_constraint = []
+        # Structural Holes (Constraint and Effective Size)
+        try:
+            # Constraint measures the extent to which a node's contacts are connected to each other
+            constraint_scores = nx.constraint(G)
+            sorted_constraint = sorted(constraint_scores.items(), key=lambda item: item[1]) # Lower constraint is better for brokerage
+        except Exception as e:
+            constraint_scores = f"Error calculating constraint: {e}"
+            sorted_constraint = []
 
-    try:
-        # Effective size measures the number of nonredundant contacts
-        effective_size_scores = nx.effective_size(G)
-        sorted_effective_size = sorted(effective_size_scores.items(), key=lambda item: item[1], reverse=True) # Higher effective size is better
-    except Exception as e:
-        effective_size_scores = f"Error calculating effective size: {e}"
-        sorted_effective_size = []
+        try:
+            # Effective size measures the number of nonredundant contacts
+            effective_size_scores = nx.effective_size(G)
+            sorted_effective_size = sorted(effective_size_scores.items(), key=lambda item: item[1], reverse=True) # Higher effective size is better
+        except Exception as e:
+            effective_size_scores = f"Error calculating effective size: {e}"
+            sorted_effective_size = []
 
-    # Centrality measures
-    degree_centrality = nx.degree_centrality(G)
-    betweenness_centrality = nx.betweenness_centrality(G)
-    closeness_centrality = nx.closeness_centrality(G)
-    
-    # Summarize centrality measures by node type
-    article_degree_centralities = [v for n, v in degree_centrality.items() if G.nodes[n].get('type') == 'article']
-    problem_degree_centralities = [v for n, v in degree_centrality.items() if G.nodes[n].get('type') == 'problem']
+        # Centrality measures
+        degree_centrality = nx.degree_centrality(G)
+        betweenness_centrality = nx.betweenness_centrality(G)
+        closeness_centrality = nx.closeness_centrality(G)
+        
+        # Summarize centrality measures by node type
+        article_degree_centralities = [v for n, v in degree_centrality.items() if G.nodes[n].get('type') == 'article']
+        problem_degree_centralities = [v for n, v in degree_centrality.items() if G.nodes[n].get('type') == 'problem']
 
-    article_betweenness_centralities = [v for n, v in betweenness_centrality.items() if G.nodes[n].get('type') == 'article']
-    problem_betweenness_centralities = [v for n, v in betweenness_centrality.items() if G.nodes[n].get('type') == 'problem']
+        article_betweenness_centralities = [v for n, v in betweenness_centrality.items() if G.nodes[n].get('type') == 'article']
+        problem_betweenness_centralities = [v for n, v in betweenness_centrality.items() if G.nodes[n].get('type') == 'problem']
 
-    article_closeness_centralities = [v for n, v in closeness_centrality.items() if G.nodes[n].get('type') == 'article']
-    problem_closeness_centralities = [v for n, v in closeness_centrality.items() if G.nodes[n].get('type') == 'problem']
-    
-    advanced_analysis_results = {
-        'average_clustering_coefficient': avg_clustering,
-        'degree_assortativity_coefficient': degree_assortativity,
-        'centrality_measures_summary': {
-            'article_nodes': {
-                'degree_centrality': {
-                    'mean': float(np.mean(article_degree_centralities)) if article_degree_centralities else 0.0,
-                    'max': float(np.max(article_degree_centralities)) if article_degree_centralities else 0.0
+        article_closeness_centralities = [v for n, v in closeness_centrality.items() if G.nodes[n].get('type') == 'article']
+        problem_closeness_centralities = [v for n, v in closeness_centrality.items() if G.nodes[n].get('type') == 'problem']
+        
+        advanced_analysis_results = {
+            'average_clustering_coefficient': avg_clustering,
+            'degree_assortativity_coefficient': degree_assortativity,
+            'centrality_measures_summary': {
+                'article_nodes': {
+                    'degree_centrality': {
+                        'mean': float(np.mean(article_degree_centralities)) if article_degree_centralities else 0.0,
+                        'max': float(np.max(article_degree_centralities)) if article_degree_centralities else 0.0
+                    },
+                     'betweenness_centrality': {
+                        'mean': float(np.mean(article_betweenness_centralities)) if article_betweenness_centralities else 0.0,
+                        'max': float(np.max(article_betweenness_centralities)) if article_betweenness_centralities else 0.0
+                    },
+                    'closeness_centrality': {
+                        'mean': float(np.mean(article_closeness_centralities)) if article_closeness_centralities else 0.0,
+                        'max': float(np.max(article_closeness_centralities)) if article_closeness_centralities else 0.0
+                    }
                 },
-                 'betweenness_centrality': {
-                    'mean': float(np.mean(article_betweenness_centralities)) if article_betweenness_centralities else 0.0,
-                    'max': float(np.max(article_betweenness_centralities)) if article_betweenness_centralities else 0.0
-                },
-                'closeness_centrality': {
-                    'mean': float(np.mean(article_closeness_centralities)) if article_closeness_centralities else 0.0,
-                    'max': float(np.max(article_closeness_centralities)) if article_closeness_centralities else 0.0
+                'problem_nodes': {
+                     'degree_centrality': {
+                        'mean': float(np.mean(problem_degree_centralities)) if problem_degree_centralities else 0.0,
+                        'max': float(np.max(problem_degree_centralities)) if problem_degree_centralities else 0.0
+                    },
+                     'betweenness_centrality': {
+                        'mean': float(np.mean(problem_betweenness_centralities)) if problem_betweenness_centralities else 0.0,
+                        'max': float(np.max(problem_betweenness_centralities)) if problem_betweenness_centralities else 0.0
+                    },
+                    'closeness_centrality': {
+                        'mean': float(np.mean(problem_closeness_centralities)) if problem_closeness_centralities else 0.0,
+                        'max': float(np.max(problem_closeness_centralities)) if problem_closeness_centralities else 0.0
+                    }
                 }
             },
-            'problem_nodes': {
-                 'degree_centrality': {
-                    'mean': float(np.mean(problem_degree_centralities)) if problem_degree_centralities else 0.0,
-                    'max': float(np.max(problem_degree_centralities)) if problem_degree_centralities else 0.0
-                },
-                 'betweenness_centrality': {
-                    'mean': float(np.mean(problem_betweenness_centralities)) if problem_betweenness_centralities else 0.0,
-                    'max': float(np.max(problem_betweenness_centralities)) if problem_betweenness_centralities else 0.0
-                },
-                'closeness_centrality': {
-                    'mean': float(np.mean(problem_closeness_centralities)) if problem_closeness_centralities else 0.0,
-                    'max': float(np.max(problem_closeness_centralities)) if problem_closeness_centralities else 0.0
-                }
+            'advanced_analysis': {
+                'communities': communities,
+                'pagerank_top_10': sorted_pagerank[:10],
+                'constraint_top_10_lowest': sorted_constraint[:10],
+                'effective_size_top_10': sorted_effective_size[:10]
             }
-        },
-        'advanced_analysis': {
-            'communities': communities,
-            'pagerank_top_10': sorted_pagerank[:10],
-            'constraint_top_10_lowest': sorted_constraint[:10],
-            'effective_size_top_10': sorted_effective_size[:10]
         }
-    }
-    
-    return jsonify(advanced_analysis_results)
+        
+        return jsonify(advanced_analysis_results)
+    except Exception as e:
+        return jsonify({"error": str(e)}), 400
 
 @app.route('/search')
 def search_articles():
