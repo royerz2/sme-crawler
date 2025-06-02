@@ -1,0 +1,30 @@
+# Web Framework and Server
+flask==3.0.2
+flask-cors==4.0.0
+gunicorn==23.0.0
+werkzeug==3.0.1
+
+# Database
+pymongo==4.6.1
+python-dotenv==1.0.1
+
+# Data Processing and Analysis
+pandas==2.2.1
+numpy==1.26.4
+scikit-learn==1.4.1
+
+# Natural Language Processing
+nltk==3.8.1
+networkx==3.2.1
+
+# AI and Machine Learning
+openai==1.12.0
+scikit-learn==1.4.1
+
+# Utilities
+python-dateutil==2.8.2
+requests==2.31.0
+urllib3==2.2.1
+certifi==2024.2.2
+charset-normalizer==3.3.2
+idna==3.6 
